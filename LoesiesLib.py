@@ -97,7 +97,7 @@ def CreateComparisonMatrix(input_file, output_file, id_label, headers = ''):
         # print(dict_row)
         rows += 1
         if id_label in dict_row:
-            outBuff += '{0}'.format(dict_row[id_label])
+            outBuff = '{0}'.format(dict_row[id_label])
         else:
             print('Error: No label found in the header with the id_label({0}). Exciting!'
                   .format(id_label))
