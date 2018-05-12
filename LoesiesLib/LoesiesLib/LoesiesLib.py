@@ -1,7 +1,7 @@
-import csv
+import csv, sys
 import datetime, time
 
-import general_lib
+from .general_lib import *
 
 
 ###
@@ -65,7 +65,8 @@ def CreateComparisonMatrix(input_file, output_file, id_label, headers = ''):
         exit()
 
     # Open output file for writing text.
-    if not general_lib.ensure_dir(output_file, True):
+    # general_lib.
+    if not ensure_dir(output_file, True):
         print('Error: Could not create output directory for file {0}.'.format(output_file))
 
     # comparisonMatrix = open(output_file, 'wt')
@@ -144,6 +145,7 @@ def CreateComparisonMatrix(input_file, output_file, id_label, headers = ''):
                                                float(duration.seconds % 60),
                                                float(duration.microseconds/1000)))
     print()
+    sys.stdout.flush()
 # end CreateComparisonMatrix
 
 
@@ -281,6 +283,7 @@ def AverageMatrices(filePathList, output_file, id_label):
                                                float(duration.seconds % 60),
                                                float(duration.microseconds/1000)))
     print()
+    sys.stdout.flush()
 # end AverageMatrices
 
 
@@ -296,7 +299,7 @@ import os
 #   headers:    All columns are labeled with headers. If the file does not contain the headers,
 #               specify them in the variable headers.
 ###
-def FindBouts(input_file, output_file, id_label, score_level, headers = ''):
+def FindBouts(input_file, output_file='', id_label='act', score_level=1, headers = ''):
 
     # Settings
     entryTime = 15
@@ -362,7 +365,8 @@ def FindBouts(input_file, output_file, id_label, score_level, headers = ''):
     dict_reader = csv.DictReader(csvInFile, delimiter=';', fieldnames=headers)
 
     # Open output file for writing text.
-    if not general_lib.ensure_dir(output_file, True):
+    # general_lib.
+    if not ensure_dir(output_file, True):
         print('Error: Could not create output directory for file {0}.'.format(output_file))
 
     csvOutFile = 0
@@ -463,4 +467,6 @@ def FindBouts(input_file, output_file, id_label, score_level, headers = ''):
 
     print(outBuff)
 
-# end
+    sys.stdout.flush()
+
+# end FindBouts
