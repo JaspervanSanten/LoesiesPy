@@ -299,9 +299,10 @@ import os
 #   headers:    All columns are labeled with headers. If the file does not contain the headers,
 #               specify them in the variable headers.
 ###
-def FindBouts(input_file, output_file='', id_label='act', score_level=1, headers = ''):
-
+def FindBouts(input_file, output_file='', labels={'act_label':'act','id_label':''}, score_level=1, options = {'skip_missing_values':True}):
     # Settings
+    headers = ''
+    distinguishing_ids = False
     entryTime = 15
     class ActBout(Enum):
         REST = 0
@@ -314,7 +315,26 @@ def FindBouts(input_file, output_file='', id_label='act', score_level=1, headers
     print('Processing score files for bouts:')
     print('\t- input file:\t{0}'.format(input_file))
     print('\t- output file:\t{0}'.format(output_file))
+
+    # Name the labels chosen.
     print('')
+    if not 'act_label' in labels:
+        labels['act_label']='act'
+    print('Using labels:')
+    if 'act_label' in labels:
+        print(' - \t[{0}] as activity label'.format(labels['act_label']))
+    if 'id_label' in labels:
+        print(' - \t[{0}] as Id label'.format(labels['id_label']))
+        distinguishing_ids = True
+    if 'time_label' in labels:
+        print(' - \t[{0}] as time label'.format(labels['time_label']))
+
+    # Name the options chosen.
+    print('')
+    print('Options:')
+    for key,value in options.items():
+        print(' - \t{0}:\t{1}'.format(key,value))
+    options['skip_missing_values']
     start_time = datetime.datetime.now()
 
     # Open input file two times
@@ -326,15 +346,15 @@ def FindBouts(input_file, output_file='', id_label='act', score_level=1, headers
         exit()
 
     # Try to see if file has a header.
-
+    print('')
     data_reader = csv.reader(csvInFile, delimiter=';', quotechar='\'')
     file_has_headers = csv.Sniffer().has_header(csvInFile.read(1024))
 
     # Read the headers
     if file_has_headers:
-        if headers != '':
-            print('Error: Headers were already defined. So now they are defined twice. Exciting!')
-            exit()
+        # if headers != '':
+            # print('Error: Headers were already defined. So now they are defined twice. Exciting!')
+            # exit()
         csvInFile.seek(0)
         headers = next(data_reader)
         print('Using headers:\n\t{0}'.format(headers))
@@ -350,15 +370,15 @@ def FindBouts(input_file, output_file='', id_label='act', score_level=1, headers
                 print('Error: The headers contain at least one duplicate entry({0}). Exciting!'.format(label))
                 exit()
 
-    # Check if the id_label was properly specified.
-    if id_label == '':
-        print('Error: No id_label was specified. Exciting!'.format(id_label))
+    # Check if the act_label was properly specified.
+    if labels['act_label'] == '':
+        print('Error: No act_label was specified. Exciting!'.format(labels['act_label']))
         exit()
-    elif headers.count(id_label)<1:
-        print('Error: The id_label({0}) was not found in the header list. Exciting!\n({1})'.format(id_label, headers))
+    elif headers.count(labels['act_label'])<1:
+        print('Error: The act_label({0}) was not found in the header list. Exciting!\n({1})'.format(labels['act_label'], headers))
         exit()
-    elif headers.count(id_label)>1:
-        print('Error: The id_label({0}) was found more than once in the header list. Exciting!\n({1})'.format(id_label, headers))
+    elif headers.count(labels['act_label'])>1:
+        print('Error: The act_label({0}) was found more than once in the header list. Exciting!\n({1})'.format(labels['act_label'], headers))
         exit()
 
     # Open input file as dictReader.
@@ -376,32 +396,72 @@ def FindBouts(input_file, output_file='', id_label='act', score_level=1, headers
         print('Error: Could not open output file {0}.'.format(output_file))
         exit()
 
+    cont = input("\nPress Enter to continue. (or ctrl-c to exit)\n")
 
-    #Open output
-    outBoutList = []
-    BoutsCountList = [0,0]
-    BoutsTotalTImeList = [0,0]
-    BoutsMeanTImeList = [0,0]
+
+    id_val = -1
+    if distinguishing_ids:
+        for current_row, next_row in pairwise(dict_reader):
+            id_val = current_row[labels['id_label']]
+        print('ID: {0}'.format(id_val))
+
+
 
     # Print output headers to file
+    outBoutList = []
     outBoutList.append('BType')
     outBoutList.append('time')
     outBoutList.append('raw')
     outBuff = ';'.join(outBoutList)
     outBuff = outBuff +'\n'
     csvOutFile.write(outBuff)
-    outBoutList = []
 
+    # Initialse
+    outBoutList = []
+    BoutsCountList = [0,0]
+    BoutsTotalTImeList = [0,0]
+    BoutsMeanTImeList = [0,0]
 
     rawActList = []
     timeBout = 0
     firstAct = True
+    number_of_entries = 0
+    skipped_missing_values = 0
     # newAct = 0
     # currAct = 0
     outBuff = ''
+
     for in_row in dict_reader:
-        # print('OUT: {0}'.format(in_row[id_label]))
-        if int(in_row[id_label])<score_level:
+        number_of_entries = number_of_entries + 1
+        # print('OUT: {0}'.format(in_row[labels['act_label']]))
+        act_val=-1
+        time_val = -1
+
+        try:
+            act_val = int(in_row[labels['act_label']])
+        except ValueError:
+            act_val = 0
+            if options['skip_missing_values']:
+                skipped_missing_values = skipped_missing_values + 1
+                # print('The activity value read for {1} is [{0}], skipping value.'.format(act_val,in_row.items()))
+                continue
+            else:
+                print('The activity value read for {2} is [{0}], using {1}.'.format(in_row[labels['act_label']],act_val,in_row.items()))
+
+        if 'time_label' in labels:
+            try:
+                time_val = int(in_row[labels['time_label']])
+            except ValueError:
+                time_val = 0
+                    # print('The activity value read for {1} is [{0}], skipping value.'.format(act_val,in_row.items()))
+                print('The row has an invalid time entry: [{0}].'.format(in_row[labels['time_label']]))
+
+        if distinguishing_ids:
+            id_val = in_row[labels['id_label']]
+            print('The row has an invalid time entry: [{0}].'.format(in_row[labels['time_label']]))
+
+
+        if act_val<score_level:
             newAct = 0
             # print('low')
         else:
@@ -434,8 +494,11 @@ def FindBouts(input_file, output_file='', id_label='act', score_level=1, headers
             currAct = newAct
             outBoutList.append('{0}'.format('wake' if currAct>=score_level else 'rest'))
 
-        rawActList.append('{0}'.format(str(in_row[id_label])))
-        timeBout = timeBout + entryTime
+        rawActList.append('{0}'.format(str(in_row[labels['act_label']])))
+        if 'time_label' in labels:
+            timeBout = timeBout + timeAct
+        else:
+            timeBout = timeBout + entryTime
 
     # Last bout found
     outBoutList.append('{0}'.format(timeBout))
@@ -453,16 +516,21 @@ def FindBouts(input_file, output_file='', id_label='act', score_level=1, headers
 
     outBuff = '\n'
     outBuff = outBuff + 'Number of bouts:\n'
-    outBuff = outBuff + '\t- rest :\t{0}\n'.format(BoutsCountList[ActBout.REST.value])
-    outBuff = outBuff + '\t- wake :\t{0}\n'.format(BoutsCountList[ActBout.WAKE.value])
+    outBuff = outBuff + '\t- rest :\t{0: 8}\n'.format(BoutsCountList[ActBout.REST.value])
+    outBuff = outBuff + '\t- wake :\t{0: 8}\n'.format(BoutsCountList[ActBout.WAKE.value])
     outBuff = outBuff +'\n'
     outBuff = outBuff + 'Total time per bout type:\n'
-    outBuff = outBuff + '\t- rest :\t{0}\n'.format(BoutsTotalTImeList[ActBout.REST.value])
-    outBuff = outBuff + '\t- wake :\t{0}\n'.format(BoutsTotalTImeList[ActBout.WAKE.value])
+    outBuff = outBuff + '\t- rest :\t{0: 8}\n'.format(BoutsTotalTImeList[ActBout.REST.value])
+    outBuff = outBuff + '\t- wake :\t{0: 8}\n'.format(BoutsTotalTImeList[ActBout.WAKE.value])
     outBuff = outBuff +'\n'
     outBuff = outBuff + 'Mean time per bout type:\n'
-    outBuff = outBuff + '\t- rest :\t{0}\n'.format(BoutsMeanTImeList[ActBout.REST.value])
-    outBuff = outBuff + '\t- wake :\t{0}\n'.format(BoutsMeanTImeList[ActBout.WAKE.value])
+    outBuff = outBuff + '\t- rest :\t{0: 6.9}\n'.format(BoutsMeanTImeList[ActBout.REST.value])
+    outBuff = outBuff + '\t- wake :\t{0: 6.9}\n'.format(BoutsMeanTImeList[ActBout.WAKE.value])
+    outBuff = outBuff +'\n'
+    outBuff = outBuff +'\n'
+    outBuff = outBuff + 'Number entries:\t\t\t{0: 8}\n'.format(number_of_entries)
+    outBuff = outBuff + 'Number of skipped entries:\t{0: 8}\n'.format(skipped_missing_values)
+
     csvOutFile.write(outBuff)
 
     print(outBuff)
