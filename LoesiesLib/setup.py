@@ -1,7 +1,7 @@
 from setuptools import setup
 
 setup(name='LoesiesLib',
-      version='0.1',
+      version='0.3',
       description='Loesies library',
       url='https://github.com/JaspervanSanten/LoesiesPy',
       author='Mediocre Man',
